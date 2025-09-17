@@ -1,13 +1,15 @@
 package com.example.demo;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class ToolRentTingesoApplicationTests {
+class ToolRentTingesoApplicationTest {
 
-	@Test
-	void contextLoads() {
-	}
-
+    @Test
+    void main_runs_withoutErrors() {
+        ToolRentTingesoApplication.main(new String[] { "--server.port=0" });
+    }
 }
+
+
+
+
