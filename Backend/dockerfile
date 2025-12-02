@@ -20,9 +20,13 @@ COPY --from=build /app/target/*.jar app.jar
 EXPOSE 8080
 
 # Variables de entorno por defecto (puedes sobreescribirlas al ejecutar)
-ENV SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5433/tools_rent
+ENV SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/toolrent_db
 ENV SPRING_DATASOURCE_USERNAME=postgres
 ENV SPRING_DATASOURCE_PASSWORD=admin
+
+# Keycloak config  👇 AQUÍ VA
+ENV SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://keycloak:8080/realms/sisgr
+ENV SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=http://keycloak:8080/realms/sisgr/protocol/openid-connect/certs
 
 # Comando de inicio
 ENTRYPOINT ["java", "-jar", "app.jar"]
