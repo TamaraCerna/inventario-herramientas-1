@@ -1,0 +1,94 @@
+pipeline {
+    agent any
+
+    environment {
+        FRONTEND_DIR = 'Frontend'
+        DOCKER_IMAGE = 'tm4ra/toolrent-frontend'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo '===> Checkout del código desde GitHub'
+                checkout scm
+            }
+        }
+
+        stage('Instalar dependencias (npm install)') {
+            steps {
+                dir(FRONTEND_DIR) {
+                    sh '''
+                        echo "===> Versión de node/npm (si existen)"
+                        node -v || echo "node no está instalado"
+                        npm -v || echo "npm no está instalado"
+
+                        echo "===> Instalando dependencias..."
+                        npm install
+                    '''
+                }
+            }
+        }
+
+        stage('Build frontend (npm run build)') {
+            steps {
+                dir(FRONTEND_DIR) {
+                    sh '''
+                        echo "===> Ejecutando build de Vite/React"
+                        npm run build
+                    '''
+                }
+            }
+        }
+
+        stage('Build Docker Image (si hay docker)') {
+            when {
+                expression { 
+                    // Solo ejecuta este stage si el binario docker existe
+                    sh(script: 'command -v docker >/dev/null 2>&1', returnStatus: true) == 0 
+                }
+            }
+            steps {
+                sh '''
+                    echo ">> Docker está disponible, construyendo imagen del frontend..."
+                    docker build -t tm4ra/toolrent-frontend:jenkins-build -f Frontend/dockerfile Frontend
+                '''
+            }
+        }
+
+        stage('Login & Push a Docker Hub (si hay docker)') {
+            when {
+                expression { 
+                    sh(script: 'command -v docker >/dev/null 2>&1', returnStatus: true) == 0 
+                }
+            }
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'docker-hub-cred',   // MISMO ID que usaste para el backend
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh '''
+                        echo ">> Iniciando sesión en Docker Hub..."
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+
+                        echo ">> Enviando imagen al repositorio..."
+                        docker push tm4ra/toolrent-frontend:jenkins-build
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            script {
+                def hasDocker = sh(script: 'command -v docker >/dev/null 2>&1', returnStatus: true) == 0
+                if (hasDocker) {
+                    sh 'docker system prune -f || true'
+                } else {
+                    sh 'echo ">> Docker NO está disponible, se omite docker system prune."'
+                }
+            }
+        }
+    }
+}
